@@ -10,8 +10,8 @@
             url: 'https://forum.vivaldi.net/user/aminought',
             selector: '.profile.row',
             zoomFactor: 0.8,
-            width: '240px',
-            height: '248px'
+            width: '292px',
+            height: '266px'
         }
     ];
     */
@@ -113,8 +113,8 @@
             const widget = document.createElement('div');
             widget.id = 'Widget';
             widget.style.position = 'relative';
-            widget.style.width = `calc(${width} + 12px)`;
-            widget.style.height = `calc(${height} + 28px)`;
+            widget.style.width = width;
+            widget.style.height = height;
             widget.style.margin = '10px';
             return widget;
         }
@@ -170,6 +170,7 @@
                     e.parent.removeChild(e.child)
                 });
                 const body = document.querySelector('body');
+                body.style.overflow = 'hidden';
             })()`;
             webview.addEventListener('loadcommit', () => webview.executeScript({code: script}));
         }
