@@ -1,6 +1,7 @@
 (function widgets() {
     "use strict";
 
+    const START_PAGE_TITLE = 'Start Page';
     const START_PAGE_BUTTON = 'Widgets';
     /* 
     EXAMPLE:
@@ -100,10 +101,11 @@
             const width = widgetInfo.width;
             const height = widgetInfo.height;
             const selector = widgetInfo.selector;
+            const timeout = widgetInfo.timeout;
 
             const widget = this.#createWidgetDiv(width, height);
             const webview = this.#createWebview(id, url, zoomFactor);
-            this.#filterSelector(webview, selector);
+            this.#filterSelector(webview, selector, timeout);
             widget.appendChild(webview);
 
             return widget;
@@ -150,7 +152,7 @@
             this.#speedDial.appendChild(this.#widgets);
         }
 
-        #filterSelector(webview, selector) {
+        #filterSelector(webview, selector, timeout) {
             const script = `(() => {
                 var toDelete = [];
                 var e = document.querySelector('${selector}');
@@ -172,7 +174,11 @@
                 const body = document.querySelector('body');
                 body.style.overflow = 'hidden';
             })()`;
-            webview.addEventListener('loadcommit', () => webview.executeScript({code: script}));
+            webview.addEventListener('loadcommit', () => {
+                setTimeout(() => {
+                    webview.executeScript({code: script})
+                }, timeout);
+            });
         }
 
         // getters
@@ -202,7 +208,7 @@
         }
 
         get #isStartPage() {
-            return this.#title.innerText === 'Start Page';
+            return this.#title.innerText === START_PAGE_TITLE;
         }
     };
 
