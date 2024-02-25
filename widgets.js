@@ -1,7 +1,6 @@
 (function widgets() {
     "use strict";
 
-    const START_PAGE_TITLE = 'Start Page';
     const START_PAGE_BUTTON = 'Widgets';
     /* 
     EXAMPLE:
@@ -132,17 +131,18 @@
             const selector = widgetInfo.selector;
             const timeout = widgetInfo.timeout;
 
-            const widget = this.#createWidgetDiv(width, height);
-            const webview = this.#createWebview(id, url, zoomFactor);
+            const widget = this.#createWidgetDiv(id, width, height);
+            const webview = this.#createWebview(url, zoomFactor);
             this.#filterSelector(webview, selector, timeout);
             widget.appendChild(webview);
 
             return widget;
         }
 
-        #createWidgetDiv(width, height) {
+        #createWidgetDiv(id, width, height) {
             const widgetDiv = document.createElement('div');
-            widgetDiv.id = 'Widget';
+            widgetDiv.id = id;
+            widgetDiv.className = 'Widget';
             widgetDiv.style.position = 'relative';
             widgetDiv.style.width = `calc(${width} + ${APPEARANCE.widget.padding} * 2)`;
             widgetDiv.style.height = `calc(${height} + ${APPEARANCE.widget.padding} * 2)`;
@@ -154,9 +154,8 @@
             return widgetDiv;
         }
 
-        #createWebview(id, url, zoomFactor) {
+        #createWebview(url, zoomFactor) {
             const webview = document.createElement('webview');
-            webview.id = id;
             webview.src = url;
             webview.style.position = 'relative';
             webview.style.width = '100%';
@@ -254,7 +253,17 @@
         }
 
         get #isStartPage() {
-            return this.#title.innerText === START_PAGE_TITLE;
+            const startPageTitle = this.#getMessage('Start Page', 'title');
+            return this.#title.innerText === startPageTitle;
+        }
+
+        // utils
+
+        #getMessage(message, type) {
+            const messageName = (type ? type + '\x04' + message : message).replace(/[^a-z0-9]/g, function (i) {
+                return '_' + i.codePointAt(0) + '_';
+            }) + '0';
+            return chrome.i18n.getMessage(messageName) || message;
         }
     };
 
