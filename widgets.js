@@ -144,8 +144,8 @@
             const widgetDiv = document.createElement('div');
             widgetDiv.id = 'Widget';
             widgetDiv.style.position = 'relative';
-            widgetDiv.style.width = width;
-            widgetDiv.style.height = height;
+            widgetDiv.style.width = `calc(${width} + ${APPEARANCE.widget.padding} * 2)`;
+            widgetDiv.style.height = `calc(${height} + ${APPEARANCE.widget.padding} * 2)`;
             widgetDiv.style.margin = '10px';
             widgetDiv.style.padding = APPEARANCE.widget.padding;
             widgetDiv.style.borderRadius = APPEARANCE.widget.borderRadius 
