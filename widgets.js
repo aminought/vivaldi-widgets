@@ -57,6 +57,7 @@
             this.#addWidgets();
             this.#createSdWrapperMutationObserver();
             this.#createTabActivationListener();
+            this.#createReloadButtonListener();
         }
 
         // listeners
@@ -88,6 +89,10 @@
                 childList: true,
                 subtree: true
             });
+        }
+
+        #createReloadButtonListener() {
+            this.#reloadButton.addEventListener('click', () => this.#reloadWidgets());
         }
 
         // builders
@@ -227,6 +232,16 @@
             });
         }
 
+        #reloadWidgets() {
+            if (!this.#widgetsDiv) {
+                return;
+            }
+            for (const widget of this.#widgets.children) {
+                const webview = widget.children[0];
+                webview.reload();
+            }
+        }
+
         // getters
 
         get #title() {
@@ -251,6 +266,10 @@
 
         get #activeStartPageButton() {
             return this.#internalPage?.querySelector('.button-startpage.active');
+        }
+
+        get #reloadButton() {
+            return document.querySelector('button[name=Reload]');
         }
 
         get #isStartPage() {
