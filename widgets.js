@@ -19,6 +19,35 @@
     const WIDGETS = [];
     const DELAY = 100;
 
+    const APPEARANCE_PRESETS = [
+        {
+            widgets: {
+                backgroundColor: 'var(--colorBgAlphaBlur)',
+                backdropFilter: 'var(--backgroundBlur)'
+            },
+            widget: {
+                backgroundColor: 'transparent',
+                backdropFilter: 'none',
+                padding: '0px',
+                borderRadius: '0px'
+            }
+        },
+        {
+            widgets: {
+                backgroundColor: 'transparent',
+                backdropFilter: 'none'
+            },
+            widget: {
+                backgroundColor: 'var(--colorBgAlphaBlur)',
+                backdropFilter: 'var(--backgroundBlur)',
+                padding: '5px',
+                borderRadius: 'var(--radius)'
+            }
+        }
+    ];
+
+    const APPEARANCE = APPEARANCE_PRESETS[0];
+
     class Widgets {
         #widgets = null;
         #sdWrapperMutationObserver = null;
@@ -88,9 +117,9 @@
             widgetsDiv.style.flexWrap = 'wrap';
             widgetsDiv.style.justifyContent = 'center';
             widgetsDiv.style.maxWidth = '80%';
-            widgetsDiv.style.backgroundColor = 'var(--colorBgAlphaBlur)';
-            widgetsDiv.style.backdropFilter = 'var(--backgroundBlur)';
             widgetsDiv.style.borderRadius = 'var(--radius)';
+            widgetsDiv.style.backgroundColor = APPEARANCE.widgets.backgroundColor;
+            widgetsDiv.style.backdropFilter = APPEARANCE.widgets.backdropFilter;
             return widgetsDiv;
         }
 
@@ -112,13 +141,17 @@
         }
 
         #createWidgetDiv(width, height) {
-            const widget = document.createElement('div');
-            widget.id = 'Widget';
-            widget.style.position = 'relative';
-            widget.style.width = width;
-            widget.style.height = height;
-            widget.style.margin = '10px';
-            return widget;
+            const widgetDiv = document.createElement('div');
+            widgetDiv.id = 'Widget';
+            widgetDiv.style.position = 'relative';
+            widgetDiv.style.width = width;
+            widgetDiv.style.height = height;
+            widgetDiv.style.margin = '10px';
+            widgetDiv.style.padding = APPEARANCE.widget.padding;
+            widgetDiv.style.borderRadius = APPEARANCE.widget.borderRadius 
+            widgetDiv.style.backgroundColor = APPEARANCE.widget.backgroundColor;
+            widgetDiv.style.backdropFilter = APPEARANCE.widget.backdropFilter;
+            return widgetDiv;
         }
 
         #createWebview(id, url, zoomFactor) {
