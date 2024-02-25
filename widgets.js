@@ -11,7 +11,8 @@
             selector: '.profile.row',
             zoomFactor: 0.8,
             width: '292px',
-            height: '266px'
+            height: '266px',
+            timeout: 0
         }
     ];
     */
