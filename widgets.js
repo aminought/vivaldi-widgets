@@ -183,6 +183,14 @@
                 return;
             }
             this.#speedDial.appendChild(this.#widgets);
+            this.#fixPointerEvents();
+        }
+
+        #fixPointerEvents() {
+            for (const widget of this.#widgets.children) {
+                const webview = widget.querySelector('webview');
+                webview.style.pointerEvents = 'all';
+            }
         }
 
         #filterSelector(webview, selector, timeout) {
