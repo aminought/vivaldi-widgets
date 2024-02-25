@@ -207,6 +207,7 @@
                     e.style.overflow = 'visible';
                     e.style.minWidth = '0px';
                     e.style.minHeight = '0px';
+                    e.style.gridGap = '0px';
                     e = e.parentElement;
                     e.style.padding = 0;
                     e.style.margin = 0;
