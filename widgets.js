@@ -205,6 +205,8 @@
                         }
                     }
                     e.style.overflow = 'visible';
+                    e.style.minWidth = '0px';
+                    e.style.minHeight = '0px';
                     e = e.parentElement;
                     e.style.padding = 0;
                     e.style.margin = 0;
@@ -214,6 +216,8 @@
                 });
                 const body = document.querySelector('body');
                 body.style.overflow = 'hidden';
+                body.style.minWidth = '0px';
+                body.style.minHeight = '0px';
             })()`;
             webview.addEventListener('loadcommit', () => {
                 setTimeout(() => {
