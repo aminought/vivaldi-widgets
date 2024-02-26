@@ -19,34 +19,29 @@
     const WIDGETS = [];
     const DELAY = 100;
 
-    const APPEARANCE_PRESETS = [
-        {
-            widgets: {
-                backgroundColor: 'var(--colorBgAlphaBlur)',
-                backdropFilter: 'var(--backgroundBlur)'
-            },
-            widget: {
-                backgroundColor: 'transparent',
-                backdropFilter: 'none',
-                padding: '5px',
-                borderRadius: '0px'
-            }
+    const APPEARANCE = {
+        widgets: {
+            backgroundColor: 'transparent',
+            backdropFilter: 'none'
         },
-        {
-            widgets: {
-                backgroundColor: 'transparent',
-                backdropFilter: 'none'
+        widget: {
+            backgroundColor: 'var(--colorBgAlphaBlur)',
+            backdropFilter: 'var(--backgroundBlur)',
+            borderRadius: 'var(--radius)',
+            normalPadding: {
+                top: '5px',
+                right: '5px',
+                bottom: '5px',
+                left: '5px',
             },
-            widget: {
-                backgroundColor: 'var(--colorBgAlphaBlur)',
-                backdropFilter: 'var(--backgroundBlur)',
-                padding: '5px',
-                borderRadius: 'var(--radius)'
+            dragPadding: {
+                top: '20px',
+                right: '5px',
+                bottom: '5px',
+                left: '5px',
             }
         }
-    ];
-
-    const APPEARANCE = APPEARANCE_PRESETS[0];
+    };
 
     class Widgets {
         #db = new Database();
@@ -187,23 +182,54 @@
         }
 
         #createWidgetDiv(id, width, height) {
+            const normalWidth = `calc(${width} + ${APPEARANCE.widget.normalPadding.right} + ${APPEARANCE.widget.normalPadding.left})`;
+            const normalHeight = `calc(${height} + ${APPEARANCE.widget.normalPadding.top} + ${APPEARANCE.widget.normalPadding.bottom})`;
+            const dragWidth = `calc(${width} + ${APPEARANCE.widget.dragPadding.right} + ${APPEARANCE.widget.dragPadding.left})`;
+            const dragHeight = `calc(${height} + ${APPEARANCE.widget.dragPadding.top} + ${APPEARANCE.widget.dragPadding.bottom})`;
+
             const widgetDiv = document.createElement('div');
             widgetDiv.id = id;
             widgetDiv.className = 'Widget';
             widgetDiv.style.position = 'relative';
-            widgetDiv.style.width = `calc(${width} + ${APPEARANCE.widget.padding} * 2)`;
-            widgetDiv.style.height = `calc(${height} + ${APPEARANCE.widget.padding} * 2)`;
+            widgetDiv.style.width = normalWidth;
+            widgetDiv.style.height = normalHeight;
             widgetDiv.style.margin = '10px';
-            widgetDiv.style.padding = APPEARANCE.widget.padding;
+            widgetDiv.style.paddingTop = APPEARANCE.widget.normalPadding.top;
+            widgetDiv.style.paddingRight = APPEARANCE.widget.normalPadding.right;
+            widgetDiv.style.paddingBottom = APPEARANCE.widget.normalPadding.bottom;
+            widgetDiv.style.paddingLeft = APPEARANCE.widget.normalPadding.left;
             widgetDiv.style.borderRadius = APPEARANCE.widget.borderRadius 
             widgetDiv.style.backgroundColor = APPEARANCE.widget.backgroundColor;
             widgetDiv.style.backdropFilter = APPEARANCE.widget.backdropFilter;
+            widgetDiv.style.transition = 'height 0.2s ease-out, width 0.2s ease-out, padding 0.2s ease-out';
+            widgetDiv.style.cursor = 'move';
             widgetDiv.draggable = true;
+
+            widgetDiv.onmouseenter = () => {
+                widgetDiv.style.width = dragWidth;
+                widgetDiv.style.height = dragHeight;
+                widgetDiv.style.paddingTop = APPEARANCE.widget.dragPadding.top;
+                widgetDiv.style.paddingRight = APPEARANCE.widget.dragPadding.right;
+                widgetDiv.style.paddingBottom = APPEARANCE.widget.dragPadding.bottom;
+                widgetDiv.style.paddingLeft = APPEARANCE.widget.dragPadding.left;
+            };
+
+            widgetDiv.onmouseleave = () => {
+                widgetDiv.style.width = normalWidth;
+                widgetDiv.style.height = normalHeight;
+                widgetDiv.style.paddingTop = APPEARANCE.widget.normalPadding.top;
+                widgetDiv.style.paddingRight = APPEARANCE.widget.normalPadding.right;
+                widgetDiv.style.paddingBottom = APPEARANCE.widget.normalPadding.bottom;
+                widgetDiv.style.paddingLeft = APPEARANCE.widget.normalPadding.left;
+            };
+
             widgetDiv.ondragstart = (e) => {
                 this.#draggedWidget = e.target;
                 this.#createDragAndDropAreas();
             };
+
             widgetDiv.ondragover = (e) => e.preventDefault();
+
             widgetDiv.ondrop = (e) => {
                 const targetWidget = e.target.parentElement;
                 if (targetWidget != this.#draggedWidget) {
@@ -216,9 +242,11 @@
                 });
                 return false;
             };
+
             widgetDiv.ondragend = () => {
                 this.#removeDragAndDropAreas();
             };
+
             return widgetDiv;
         }
 
