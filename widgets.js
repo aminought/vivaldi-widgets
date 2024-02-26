@@ -314,6 +314,7 @@
                     e = e.parentElement;
                     e.style.padding = 0;
                     e.style.margin = 0;
+                    e.style.transform = 'none';
                 }
                 toDelete.forEach(e => {
                     e.parent.removeChild(e.child)
@@ -322,6 +323,7 @@
                 body.style.overflow = 'hidden';
                 body.style.minWidth = '0px';
                 body.style.minHeight = '0px';
+                window.scrollTo(0, 0);
             })()`;
             webview.addEventListener('loadcommit', () => {
                 setTimeout(() => {
