@@ -1,9 +1,7 @@
 (function widgets() {
     "use strict";
 
-    const START_PAGE_BUTTON = 'Widgets';
-    /* 
-    EXAMPLE:
+    const START_PAGE_BUTTON = null;
     const WIDGETS = [
         {
             id: 'VivaldiProfileWidget',
@@ -13,10 +11,17 @@
             width: '292px',
             height: '266px',
             timeout: 0
+        },
+        {
+            id: 'VivaldiReleasesWidget',
+            url: 'https://vivaldi.com/blog/',
+            selector: '.download-vivaldi-sidebar',
+            zoomFactor: 1,
+            width: '342px',
+            height: '378px',
+            timeout: 0
         }
     ];
-    */
-    const WIDGETS = [];
     const DELAY = 100;
 
     const APPEARANCE = {
