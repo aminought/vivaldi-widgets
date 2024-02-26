@@ -51,6 +51,7 @@
     class Widgets {
         #widgets = null;
         #sdWrapperMutationObserver = null;
+        #draggedWidget = null;
 
         constructor() {
             this.#createWidgets();
@@ -157,6 +158,23 @@
             widgetDiv.style.borderRadius = APPEARANCE.widget.borderRadius 
             widgetDiv.style.backgroundColor = APPEARANCE.widget.backgroundColor;
             widgetDiv.style.backdropFilter = APPEARANCE.widget.backdropFilter;
+            widgetDiv.draggable = true;
+            widgetDiv.ondragstart = (e) => {
+                this.#draggedWidget = e.target;
+                this.#createDragAndDropAreas();
+            };
+            widgetDiv.ondragover = (e) => e.preventDefault();
+            widgetDiv.ondrop = (e) => {
+                const targetWidget = e.target.parentElement;
+                if (targetWidget != this.#draggedWidget) {
+                    this.#widgets.insertBefore(this.#draggedWidget, targetWidget);
+                }
+                this.#removeDragAndDropAreas();
+                return false;
+            };
+            widgetDiv.ondragend = () => {
+                this.#removeDragAndDropAreas();
+            };
             return widgetDiv;
         }
 
@@ -168,6 +186,42 @@
             webview.style.height = '100%';
             webview.setZoom(zoomFactor);
             return webview;
+        }
+
+        #createDragAndDropAreas() {
+            const dragArea = this.#createWidgetDragArea(this.#draggedWidget);
+            this.#draggedWidget.appendChild(dragArea);
+            for (const widget of this.#widgets.children) {
+                if (widget === this.#draggedWidget) {
+                    continue;
+                }
+                const dropArea = this.#createWidgetDropArea(widget);
+                widget.appendChild(dropArea);
+            }
+        }
+
+        #createWidgetDragArea(widgetDiv) {
+            const dragArea = document.createElement('div');
+            dragArea.className = 'WidgetDragArea';
+            dragArea.style.position = 'absolute';
+            dragArea.style.left = 0;
+            dragArea.style.top = 0;
+            dragArea.style.width = widgetDiv.style.width;
+            dragArea.style.height = widgetDiv.style.height;
+            dragArea.style.backgroundColor = 'var(--colorBgAlphaBlur)';
+            dragArea.style.backdropFilter = 'blur(1px)';
+            return dragArea;
+        }
+
+        #createWidgetDropArea(widgetDiv) {
+            const dropArea = document.createElement('div');
+            dropArea.className = 'WidgetDropArea';
+            dropArea.style.position = 'absolute';
+            dropArea.style.left = 0;
+            dropArea.style.top = 0;
+            dropArea.style.width = widgetDiv.style.width;
+            dropArea.style.height = widgetDiv.style.height;
+            return dropArea;
         }
 
         // actions
@@ -242,6 +296,13 @@
             }
         }
 
+        #removeDragAndDropAreas() {
+            for (const dropArea of this.#dropAreas) {
+                dropArea.parentElement.removeChild(dropArea);
+            }
+            this.#dragArea.parentElement.removeChild(this.#dragArea);
+        }
+
         // getters
 
         get #title() {
@@ -275,6 +336,14 @@
         get #isStartPage() {
             const startPageTitle = this.#getMessage('Start Page', 'title');
             return this.#title.innerText === startPageTitle;
+        }
+
+        get #dropAreas() {
+            return document.querySelectorAll('.WidgetDropArea');
+        }
+
+        get #dragArea() {
+            return document.querySelector('.WidgetDragArea');
         }
 
         // utils
