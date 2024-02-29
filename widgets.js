@@ -22,39 +22,96 @@
             timeout: 0
         }
     ];
+
     const DELAY = 100;
 
-    const APPEARANCE = {
-        widgets: {
-            backgroundColor: 'transparent',
-            backdropFilter: 'none'
-        },
-        widget: {
-            backgroundColor: 'var(--colorBgAlphaBlur)',
-            backdropFilter: 'var(--backgroundBlur)',
-            borderRadius: 'var(--radius)',
-            normalPadding: {
-                top: '5px',
-                right: '5px',
-                bottom: '5px',
-                left: '5px',
-            },
-            dragPadding: {
-                top: '20px',
-                right: '5px',
-                bottom: '5px',
-                left: '5px',
-            }
+    const STYLE = `
+        .Widgets {
+            position: relative;
+            display: flex;
+            flex-direction: row;
+            flex-wrap: wrap;
+            justify-content: center;
+            align-items: flex-start;
+            gap: 20px;
+            max-width: 80%;
         }
-    };
+
+        .WidgetWrapper {
+            position: relative;
+            display: flex;
+            flex-direction: row;
+            padding: 5px;
+            border-radius: var(--radius);
+            background-color: var(--colorBgAlphaBlur);
+            backdrop-filter: var(--backgroundBlur);
+            transition: width 0.2s ease-out, height 0.2s ease-out, padding 0.2s ease-out;
+            cursor: move;
+        }
+
+        .WidgetWrapper.WithHeader {
+            padding: 20px 5px 5px 5px;
+        }
+
+        .Widget {
+            position: relative;
+            transition: width 0.2s ease-out, height 0.2s ease-out;
+        }
+
+        .WidgetWebview {
+            position: relative;
+            width: 100%;
+            height: 100%;
+        }
+
+        .WidgetWrapperHeaderButton {
+            position: absolute;
+            right: 0;
+            top: 0;
+            background-color: transparent;
+            border: none;
+            opacity: 0;
+            transition: opacity 0.2s ease-out;
+        }
+
+        .WidgetWrapper.WithHeader .WidgetWrapperHeaderButton {
+            opacity: 1;
+        }
+
+        .WidgetWrapperDragArea {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: var(--colorBgAlphaBlur);
+            backdrop-filter: blur(1px);
+        }
+
+        .WidgetWrapperDropArea {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+        }
+    `;
+
+    const WIDGET_RELOAD_BUTTON_ICON = `
+        <svg width="14" height="14" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M16.2071 13H21V8.20711C21 7.76165 20.4614 7.53857 20.1464 7.85355L15.8536 12.1464C15.5386 12.4614 15.7617 13 16.2071 13Z" fill="currentColor"></path>
+            <path d="M18.65 10.9543C17.5938 9.12846 15.6197 7.90002 13.3586 7.90002C9.98492 7.90002 7.25 10.6349 7.25 14.0086C7.25 17.3823 9.98492 20.1172 13.3586 20.1172C15.1678 20.1172 16.7933 19.3308 17.9118 18.081" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></path>
+        </svg>
+    `;
 
     class Widgets {
         #db = new Database();
         #widgets = null;
         #sdWrapperMutationObserver = null;
-        #draggedWidget = null;
+        #draggedWidgetWrapper = null;
 
         constructor() {
+            this.#addStyle();
             this.#db.connect().then(() => {
                 this.#createWidgets().then(() => {
                     this.#addWidgets();
@@ -102,6 +159,12 @@
 
         // builders
 
+        #createStyle() {
+            const style = document.createElement('style');
+            style.innerHTML = STYLE;
+            return style;
+        }
+
         #createWidgetsDelayed() {
             setTimeout(() => this.#createWidgets(), DELAY);
         }
@@ -125,8 +188,8 @@
 
             widgetOrders.forEach((widgetOrder) => {
                 const widgetInfo = WIDGETS.find((widgetInfo) => widgetInfo.id === widgetOrder.id);
-                const widget = this.#createWidget(widgetInfo);
-                this.#widgets.appendChild(widget);
+                const widgetWrapper = this.#createWidgetWrapper(widgetInfo);
+                this.#widgets.appendChild(widgetWrapper);
             });
         }
 
@@ -147,7 +210,8 @@
         #generateWidgetOrdersFromStartPage() {
             const widgetOrders = [];
             var index = 0;
-            for (const widget of this.#widgets.children) {
+            for (const widgetWrapper of this.#widgets.children) {
+                const widget = widgetWrapper.querySelector('.Widget');
                 widgetOrders.push({order: index, id: widget.id})
                 index++;
             }
@@ -156,17 +220,59 @@
 
         #createWidgetsDiv() {
             const widgetsDiv = document.createElement('div');
-            widgetsDiv.id = 'Widgets';
-            widgetsDiv.style.position = 'relative';
-            widgetsDiv.style.display = 'flex';
-            widgetsDiv.style.flexDirection = 'row';
-            widgetsDiv.style.flexWrap = 'wrap';
-            widgetsDiv.style.justifyContent = 'center';
-            widgetsDiv.style.maxWidth = '80%';
-            widgetsDiv.style.borderRadius = 'var(--radius)';
-            widgetsDiv.style.backgroundColor = APPEARANCE.widgets.backgroundColor;
-            widgetsDiv.style.backdropFilter = APPEARANCE.widgets.backdropFilter;
+            widgetsDiv.className = 'Widgets';
             return widgetsDiv;
+        }
+
+        #createWidgetWrapper(widgetInfo) {
+            const widgetDiv = this.#createWidget(widgetInfo);
+            const WidgetReloadButton = this.#createWidgetReloadButton();
+            const widgetWrapperDiv = this.#createWidgetWrapperDiv();
+
+            widgetWrapperDiv.appendChild(widgetDiv);
+            widgetWrapperDiv.appendChild(WidgetReloadButton);
+
+            return widgetWrapperDiv;
+        }
+
+        #createWidgetWrapperDiv() {
+            const widgetWrapperDiv = document.createElement('div');
+            widgetWrapperDiv.className = 'WidgetWrapper';
+            widgetWrapperDiv.draggable = true;
+
+            widgetWrapperDiv.onmouseenter = () => {
+                widgetWrapperDiv.classList.add('WithHeader');
+            };
+
+            widgetWrapperDiv.onmouseleave = () => {
+                widgetWrapperDiv.classList.remove('WithHeader');
+            };
+
+            widgetWrapperDiv.ondragstart = (e) => {
+                this.#draggedWidgetWrapper = e.target;
+                this.#createDragAndDropAreas();
+            };
+
+            widgetWrapperDiv.ondragover = (e) => e.preventDefault();
+
+            widgetWrapperDiv.ondrop = (e) => {
+                const targetWidgetWrapper = e.target.parentElement;
+                if (targetWidgetWrapper != this.#draggedWidgetWrapper) {
+                    this.#widgets.insertBefore(this.#draggedWidgetWrapper, targetWidgetWrapper);
+                }
+                this.#removeDragAndDropAreas();
+                const widgetOrders = this.#generateWidgetOrdersFromStartPage();
+                this.#db.clearWidgetOrders().then(() => {
+                    this.#db.addWidgetOrders(widgetOrders);
+                });
+                return false;
+            };
+
+            widgetWrapperDiv.ondragend = () => {
+                this.#removeDragAndDropAreas();
+            };
+
+            return widgetWrapperDiv;
         }
 
         #createWidget(widgetInfo) {
@@ -182,94 +288,32 @@
             const webview = this.#createWebview(url, zoomFactor);
             this.#filterSelector(webview, selector, timeout);
             widget.appendChild(webview);
-
             return widget;
         }
 
         #createWidgetDiv(id, width, height) {
-            const normalWidth = `calc(${width} + ${APPEARANCE.widget.normalPadding.right} + ${APPEARANCE.widget.normalPadding.left})`;
-            const normalHeight = `calc(${height} + ${APPEARANCE.widget.normalPadding.top} + ${APPEARANCE.widget.normalPadding.bottom})`;
-            const dragWidth = `calc(${width} + ${APPEARANCE.widget.dragPadding.right} + ${APPEARANCE.widget.dragPadding.left})`;
-            const dragHeight = `calc(${height} + ${APPEARANCE.widget.dragPadding.top} + ${APPEARANCE.widget.dragPadding.bottom})`;
-
             const widgetDiv = document.createElement('div');
             widgetDiv.id = id;
             widgetDiv.className = 'Widget';
-            widgetDiv.style.position = 'relative';
-            widgetDiv.style.width = normalWidth;
-            widgetDiv.style.height = normalHeight;
-            widgetDiv.style.margin = '10px';
-            widgetDiv.style.paddingTop = APPEARANCE.widget.normalPadding.top;
-            widgetDiv.style.paddingRight = APPEARANCE.widget.normalPadding.right;
-            widgetDiv.style.paddingBottom = APPEARANCE.widget.normalPadding.bottom;
-            widgetDiv.style.paddingLeft = APPEARANCE.widget.normalPadding.left;
-            widgetDiv.style.borderRadius = APPEARANCE.widget.borderRadius 
-            widgetDiv.style.backgroundColor = APPEARANCE.widget.backgroundColor;
-            widgetDiv.style.backdropFilter = APPEARANCE.widget.backdropFilter;
-            widgetDiv.style.transition = 'height 0.2s ease-out, width 0.2s ease-out, padding 0.2s ease-out';
-            widgetDiv.style.cursor = 'move';
-            widgetDiv.draggable = true;
-
-            widgetDiv.onmouseenter = () => {
-                widgetDiv.style.width = dragWidth;
-                widgetDiv.style.height = dragHeight;
-                widgetDiv.style.paddingTop = APPEARANCE.widget.dragPadding.top;
-                widgetDiv.style.paddingRight = APPEARANCE.widget.dragPadding.right;
-                widgetDiv.style.paddingBottom = APPEARANCE.widget.dragPadding.bottom;
-                widgetDiv.style.paddingLeft = APPEARANCE.widget.dragPadding.left;
-            };
-
-            widgetDiv.onmouseleave = () => {
-                widgetDiv.style.width = normalWidth;
-                widgetDiv.style.height = normalHeight;
-                widgetDiv.style.paddingTop = APPEARANCE.widget.normalPadding.top;
-                widgetDiv.style.paddingRight = APPEARANCE.widget.normalPadding.right;
-                widgetDiv.style.paddingBottom = APPEARANCE.widget.normalPadding.bottom;
-                widgetDiv.style.paddingLeft = APPEARANCE.widget.normalPadding.left;
-            };
-
-            widgetDiv.ondragstart = (e) => {
-                this.#draggedWidget = e.target;
-                this.#createDragAndDropAreas();
-            };
-
-            widgetDiv.ondragover = (e) => e.preventDefault();
-
-            widgetDiv.ondrop = (e) => {
-                const targetWidget = e.target.parentElement;
-                if (targetWidget != this.#draggedWidget) {
-                    this.#widgets.insertBefore(this.#draggedWidget, targetWidget);
-                }
-                this.#removeDragAndDropAreas();
-                const widgetOrders = this.#generateWidgetOrdersFromStartPage();
-                this.#db.clearWidgetOrders().then(() => {
-                    this.#db.addWidgetOrders(widgetOrders);
-                });
-                return false;
-            };
-
-            widgetDiv.ondragend = () => {
-                this.#removeDragAndDropAreas();
-            };
+            widgetDiv.style.width = width;
+            widgetDiv.style.height = height;
 
             return widgetDiv;
         }
 
         #createWebview(url, zoomFactor) {
             const webview = document.createElement('webview');
+            webview.className = "WidgetWebview";
             webview.src = url;
-            webview.style.position = 'relative';
-            webview.style.width = '100%';
-            webview.style.height = '100%';
             webview.setZoom(zoomFactor);
             return webview;
         }
 
         #createDragAndDropAreas() {
-            const dragArea = this.#createWidgetDragArea(this.#draggedWidget);
-            this.#draggedWidget.appendChild(dragArea);
+            const dragArea = this.#createWidgetDragArea();
+            this.#draggedWidgetWrapper.appendChild(dragArea);
             for (const widget of this.#widgets.children) {
-                if (widget === this.#draggedWidget) {
+                if (widget === this.#draggedWidgetWrapper) {
                     continue;
                 }
                 const dropArea = this.#createWidgetDropArea(widget);
@@ -277,31 +321,41 @@
             }
         }
 
-        #createWidgetDragArea(widgetDiv) {
+        #createWidgetDragArea() {
             const dragArea = document.createElement('div');
-            dragArea.className = 'WidgetDragArea';
-            dragArea.style.position = 'absolute';
-            dragArea.style.left = 0;
-            dragArea.style.top = 0;
-            dragArea.style.width = widgetDiv.style.width;
-            dragArea.style.height = widgetDiv.style.height;
-            dragArea.style.backgroundColor = 'var(--colorBgAlphaBlur)';
-            dragArea.style.backdropFilter = 'blur(1px)';
+            dragArea.className = 'WidgetWrapperDragArea';
             return dragArea;
         }
 
         #createWidgetDropArea(widgetDiv) {
             const dropArea = document.createElement('div');
-            dropArea.className = 'WidgetDropArea';
-            dropArea.style.position = 'absolute';
-            dropArea.style.left = 0;
-            dropArea.style.top = 0;
+            dropArea.className = 'WidgetWrapperDropArea';
             dropArea.style.width = widgetDiv.style.width;
             dropArea.style.height = widgetDiv.style.height;
             return dropArea;
         }
 
+        #createWidgetReloadButton() {
+            const button = document.createElement('button');
+            button.className = 'WidgetWrapperHeaderButton';
+            button.innerHTML = WIDGET_RELOAD_BUTTON_ICON;
+
+            button.appendChild(icon);
+
+            button.addEventListener('click', () => {
+                const widgetWrapperDiv = button.parentElement;
+                const webview = widgetWrapperDiv.querySelector('webview');
+                webview.reload();
+            });
+            
+            return button;
+        }
+
         // actions
+
+        #addStyle() {
+            this.#head.appendChild(this.#createStyle());
+        }
 
         #addWidgetsDelayed() {
             setTimeout(() => this.#addWidgets(), DELAY);
@@ -384,6 +438,10 @@
 
         // getters
 
+        get #head() {
+            return document.querySelector('head');
+        }
+
         get #title() {
             return document.querySelector('title');
         }
@@ -397,7 +455,7 @@
         }
 
         get #widgetsDiv() {
-            return this.#internalPage?.querySelector('#Widgets');
+            return this.#internalPage?.querySelector('.Widgets');
         }
 
         get #sdWrapper() {
@@ -418,11 +476,11 @@
         }
 
         get #dropAreas() {
-            return document.querySelectorAll('.WidgetDropArea');
+            return document.querySelectorAll('.WidgetWrapperDropArea');
         }
 
         get #dragArea() {
-            return document.querySelector('.WidgetDragArea');
+            return document.querySelector('.WidgetWrapperDragArea');
         }
 
         // utils
