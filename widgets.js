@@ -40,7 +40,7 @@
         .WidgetWrapper {
             position: relative;
             display: flex;
-            flex-direction: row;
+            flex-direction: column;
             padding: 5px;
             border-radius: var(--radius);
             background-color: var(--colorBgAlphaBlur);
@@ -49,8 +49,36 @@
             cursor: move;
         }
 
-        .WidgetWrapper.WithHeader {
-            padding: 20px 5px 5px 5px;
+        .WidgetWrapper:has(.WidgetHeader:not(.Hidden)) {
+            padding: 0px 5px 5px 5px;
+        }
+
+        .WidgetHeader {
+            position: relative;
+            display: flex;
+            flex-direction: row-reverse;
+            height: 20px;
+            background-color: transparent;
+            transition: height 0.2s ease-out;
+            cursor: move;
+        }
+
+        .WidgetHeader.Hidden {
+            height: 0;
+        }
+
+        .WidgetToolbar {
+            position: relative;
+            display: flex;
+            flex-direction: row;
+            background-color: transparent;
+            padding-right: 5px;
+        }
+
+        .WidgetRow {
+            position: relative;
+            display: flex;
+            flex-direction: row;
         }
 
         .Widget {
@@ -65,17 +93,10 @@
         }
 
         .WidgetWrapperHeaderButton {
-            position: absolute;
-            right: 0;
-            top: 0;
             background-color: transparent;
             border: none;
-            opacity: 0;
-            transition: opacity 0.2s ease-out;
-        }
-
-        .WidgetWrapper.WithHeader .WidgetWrapperHeaderButton {
-            opacity: 1;
+            width: 20px;
+            height: 20px;
         }
 
         .WidgetWrapperDragArea {
@@ -98,7 +119,7 @@
     `;
 
     const WIDGET_RELOAD_BUTTON_ICON = `
-        <svg width="14" height="14" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <svg width="20" height="20" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
             <path d="M16.2071 13H21V8.20711C21 7.76165 20.4614 7.53857 20.1464 7.85355L15.8536 12.1464C15.5386 12.4614 15.7617 13 16.2071 13Z" fill="currentColor"></path>
             <path d="M18.65 10.9543C17.5938 9.12846 15.6197 7.90002 13.3586 7.90002C9.98492 7.90002 7.25 10.6349 7.25 14.0086C7.25 17.3823 9.98492 20.1172 13.3586 20.1172C15.1678 20.1172 16.7933 19.3308 17.9118 18.081" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></path>
         </svg>
@@ -157,41 +178,14 @@
             this.#reloadButton.addEventListener('click', () => this.#reloadWidgets());
         }
 
-        // builders
-
-        #createStyle() {
-            const style = document.createElement('style');
-            style.innerHTML = STYLE;
-            return style;
-        }
-
-        #createWidgetsDelayed() {
-            setTimeout(() => this.#createWidgets(), DELAY);
-        }
-
-        async #createWidgets() {
-            this.#widgets = this.#createWidgetsDiv();
-            if (!this.#widgets) {
-                this.#createWidgetsDelayed();
-                return;
-            }
-
-            var widgetOrders = this.#generateWidgetOrdersFromConfig();
-            const dbWidgetOrders = await this.#db.getWidgetOrders();
-
-            if (!this.#compareWidgetOrders(widgetOrders, dbWidgetOrders)) {
-                this.#db.clearWidgetOrders();
-                this.#db.addWidgetOrders(widgetOrders);
-            } else {
-                widgetOrders = dbWidgetOrders;
-            }
-
-            widgetOrders.forEach((widgetOrder) => {
-                const widgetInfo = WIDGETS.find((widgetInfo) => widgetInfo.id === widgetOrder.id);
-                const widgetWrapper = this.#createWidgetWrapper(widgetInfo);
-                this.#widgets.appendChild(widgetWrapper);
+        #createWidgetReloadButtonListener(button) {
+            button.addEventListener('click', () => {
+                const widgetWrapper = this.#findParentByClass(button, 'WidgetWrapper');
+                this.#reloadWidget(widgetWrapper);
             });
         }
+
+        // config
 
         #compareWidgetOrders(configWidgetOrders, dbWidgetOrders) {
             const configWidgetOrdersSet = new Set(configWidgetOrders.map((widgetOrder) => widgetOrder.id));
@@ -218,94 +212,126 @@
             return widgetOrders;
         }
 
-        #createWidgetsDiv() {
-            const widgetsDiv = document.createElement('div');
-            widgetsDiv.className = 'Widgets';
-            return widgetsDiv;
+        // builders
+
+        #createStyle() {
+            const style = document.createElement('style');
+            style.innerHTML = STYLE;
+            return style;
+        }
+
+        #createWidgetsDelayed() {
+            setTimeout(() => this.#createWidgets(), DELAY);
+        }
+
+        async #createWidgets() {
+            this.#widgets = document.createElement('div');
+            this.#widgets.className = 'Widgets';
+
+            if (!this.#widgets) {
+                this.#createWidgetsDelayed();
+                return;
+            }
+
+            var widgetOrders = this.#generateWidgetOrdersFromConfig();
+            const dbWidgetOrders = await this.#db.getWidgetOrders();
+
+            if (!this.#compareWidgetOrders(widgetOrders, dbWidgetOrders)) {
+                this.#db.clearWidgetOrders();
+                this.#db.addWidgetOrders(widgetOrders);
+            } else {
+                widgetOrders = dbWidgetOrders;
+            }
+
+            widgetOrders.forEach((widgetOrder) => {
+                const widgetInfo = WIDGETS.find((widgetInfo) => widgetInfo.id === widgetOrder.id);
+                const widgetWrapper = this.#createWidgetWrapper(widgetInfo);
+                this.#widgets.appendChild(widgetWrapper);
+            });
         }
 
         #createWidgetWrapper(widgetInfo) {
-            const widgetDiv = this.#createWidget(widgetInfo);
-            const WidgetReloadButton = this.#createWidgetReloadButton();
-            const widgetWrapperDiv = this.#createWidgetWrapperDiv();
+            const widgetWrapper = document.createElement('div');
+            widgetWrapper.className = 'WidgetWrapper';
+            widgetWrapper.draggable = true;
 
-            widgetWrapperDiv.appendChild(widgetDiv);
-            widgetWrapperDiv.appendChild(WidgetReloadButton);
+            widgetWrapper.onmouseenter = (e) => {this.#showWidgetHeader(e.target)};
+            widgetWrapper.onmouseleave = (e) => {this.#hideWidgetHeader(e.target)};
+            widgetWrapper.ondragstart = (e) => {this.#dragWidgetWrapper(e.target)};
+            widgetWrapper.ondragover = (e) => e.preventDefault();
+            widgetWrapper.ondrop = (e) => {this.#dropWidgetWrapper(e.target.parentElement)};
+            widgetWrapper.ondragend = () => {this.#removeDragAndDropAreas()};
 
-            return widgetWrapperDiv;
+            const header = this.#createWidgetHeader();
+            const widgetRow = this.#createWidgetRow(widgetInfo);
+
+            widgetWrapper.appendChild(header);
+            widgetWrapper.appendChild(widgetRow);
+
+            return widgetWrapper;
         }
 
-        #createWidgetWrapperDiv() {
-            const widgetWrapperDiv = document.createElement('div');
-            widgetWrapperDiv.className = 'WidgetWrapper';
-            widgetWrapperDiv.draggable = true;
+        #createWidgetHeader() {
+            const header = document.createElement('div');
+            header.className = 'WidgetHeader Hidden';
 
-            widgetWrapperDiv.onmouseenter = () => {
-                widgetWrapperDiv.classList.add('WithHeader');
-            };
+            const toolbar = this.#createWidgetToolbar();
+            header.appendChild(toolbar);
 
-            widgetWrapperDiv.onmouseleave = () => {
-                widgetWrapperDiv.classList.remove('WithHeader');
-            };
+            return header;
+        }
 
-            widgetWrapperDiv.ondragstart = (e) => {
-                this.#draggedWidgetWrapper = e.target;
-                this.#createDragAndDropAreas();
-            };
+        #createWidgetToolbar() {
+            const toolbar = document.createElement('div');
+            toolbar.className = 'WidgetToolbar';
 
-            widgetWrapperDiv.ondragover = (e) => e.preventDefault();
+            const reloadButton = this.#createWidgetReloadButton();
+            toolbar.appendChild(reloadButton);
 
-            widgetWrapperDiv.ondrop = (e) => {
-                const targetWidgetWrapper = e.target.parentElement;
-                if (targetWidgetWrapper != this.#draggedWidgetWrapper) {
-                    this.#widgets.insertBefore(this.#draggedWidgetWrapper, targetWidgetWrapper);
-                }
-                this.#removeDragAndDropAreas();
-                const widgetOrders = this.#generateWidgetOrdersFromStartPage();
-                this.#db.clearWidgetOrders().then(() => {
-                    this.#db.addWidgetOrders(widgetOrders);
-                });
-                return false;
-            };
+            return toolbar;
+        }
 
-            widgetWrapperDiv.ondragend = () => {
-                this.#removeDragAndDropAreas();
-            };
+        #createWidgetReloadButton() {
+            const button = document.createElement('button');
+            button.className = 'WidgetWrapperHeaderButton';
+            button.innerHTML = WIDGET_RELOAD_BUTTON_ICON;
 
-            return widgetWrapperDiv;
+            this.#createWidgetReloadButtonListener(button);
+            
+            return button;
+        }
+
+        #createWidgetRow(widgetInfo) {
+            const widgetRow = document.createElement('div');
+            widgetRow.className = 'WidgetRow';
+
+            const widget = this.#createWidget(widgetInfo);
+            widgetRow.appendChild(widget);
+
+            return widgetRow;
         }
 
         #createWidget(widgetInfo) {
-            const id = widgetInfo.id;
-            const url = widgetInfo.url;
-            const zoomFactor = widgetInfo.zoomFactor;
-            const width = widgetInfo.width;
-            const height = widgetInfo.height;
-            const selector = widgetInfo.selector;
-            const timeout = widgetInfo.timeout;
+            const widget = document.createElement('div');
+            widget.id = widgetInfo.id;
+            widget.className = 'Widget';
+            widget.style.width = widgetInfo.width;
+            widget.style.height = widgetInfo.height;
 
-            const widget = this.#createWidgetDiv(id, width, height);
-            const webview = this.#createWebview(url, zoomFactor);
-            this.#filterSelector(webview, selector, timeout);
+            const webview = this.#createWebview(widgetInfo);
             widget.appendChild(webview);
+
             return widget;
         }
 
-        #createWidgetDiv(id, width, height) {
-            const widgetDiv = document.createElement('div');
-            widgetDiv.id = id;
-            widgetDiv.className = 'Widget';
-            widgetDiv.style.width = width;
-            widgetDiv.style.height = height;
-
-            return widgetDiv;
-        }
-
-        #createWebview(url, zoomFactor) {
+        #createWebview(widgetInfo) {
             const webview = document.createElement('webview');
             webview.className = "WidgetWebview";
-            webview.src = url;
-            webview.setZoom(zoomFactor);
+            webview.src = widgetInfo.url;
+            webview.setZoom(widgetInfo.zoomFactor);
+
+            this.#filterSelector(webview, widgetInfo.selector, widgetInfo.timeout);
+
             return webview;
         }
 
@@ -333,22 +359,6 @@
             dropArea.style.width = widgetDiv.style.width;
             dropArea.style.height = widgetDiv.style.height;
             return dropArea;
-        }
-
-        #createWidgetReloadButton() {
-            const button = document.createElement('button');
-            button.className = 'WidgetWrapperHeaderButton';
-            button.innerHTML = WIDGET_RELOAD_BUTTON_ICON;
-
-            button.appendChild(icon);
-
-            button.addEventListener('click', () => {
-                const widgetWrapperDiv = button.parentElement;
-                const webview = widgetWrapperDiv.querySelector('webview');
-                webview.reload();
-            });
-            
-            return button;
         }
 
         // actions
@@ -419,13 +429,17 @@
             });
         }
 
+        #reloadWidget(widgetWrapper) {
+            const webview = widgetWrapper.querySelector('webview');
+            webview.reload();
+        }
+
         #reloadWidgets() {
             if (!this.#widgetsDiv) {
                 return;
             }
-            for (const widget of this.#widgets.children) {
-                const webview = widget.children[0];
-                webview.reload();
+            for (const widgetWrapper of this.#widgets.children) {
+                this.#reloadWidget(widgetWrapper);
             }
         }
 
@@ -434,6 +448,45 @@
                 dropArea.parentElement.removeChild(dropArea);
             }
             this.#dragArea?.parentElement?.removeChild(this.#dragArea);
+        }
+
+        // WidgetWrapper actions
+
+        #showWidgetHeader(widgetWrapper) {
+            const header = widgetWrapper.querySelector('.WidgetHeader');
+            header.classList.remove('Hidden');
+        } 
+
+        #hideWidgetHeader(widgetWrapper) {
+            const header = widgetWrapper.querySelector('.WidgetHeader');
+            header.classList.add('Hidden');
+        } 
+
+        #dragWidgetWrapper(widgetWrapper) {
+            this.#draggedWidgetWrapper = widgetWrapper;
+            this.#createDragAndDropAreas();
+        }
+
+        #dropWidgetWrapper(targetWidgetWrapper) {
+            if (targetWidgetWrapper != this.#draggedWidgetWrapper) {
+                this.#widgets.insertBefore(this.#draggedWidgetWrapper, targetWidgetWrapper);
+            }
+            this.#removeDragAndDropAreas();
+            const widgetOrders = this.#generateWidgetOrdersFromStartPage();
+            this.#db.clearWidgetOrders().then(() => {
+                this.#db.addWidgetOrders(widgetOrders);
+            });
+            return false;
+        }
+
+        // utils
+
+        #findParentByClass(element, className) {
+            if (element.parentElement.classList.contains(className)) {
+                return element.parentElement;
+            } else {
+                return this.#findParentByClass(element.parentElement, className);
+            }
         }
 
         // getters
