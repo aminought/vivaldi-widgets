@@ -35,6 +35,7 @@
             align-items: flex-start;
             gap: 20px;
             max-width: 80%;
+            padding-bottom: 20px;
         }
 
         .WidgetWrapper {
