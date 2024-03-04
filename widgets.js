@@ -76,6 +76,13 @@
             padding-right: 5px;
         }
 
+        .WidgetToolbarButton {
+            background-color: transparent;
+            border: none;
+            width: 20px;
+            height: 20px;
+        }
+
         .WidgetRow {
             position: relative;
             display: flex;
@@ -91,13 +98,6 @@
             position: relative;
             width: 100%;
             height: 100%;
-        }
-
-        .WidgetWrapperHeaderButton {
-            background-color: transparent;
-            border: none;
-            width: 20px;
-            height: 20px;
         }
 
         .WidgetWrapperDragArea {
@@ -119,11 +119,22 @@
         }
     `;
 
-    const WIDGET_RELOAD_BUTTON_ICON = `
-        <svg width="20" height="20" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M16.2071 13H21V8.20711C21 7.76165 20.4614 7.53857 20.1464 7.85355L15.8536 12.1464C15.5386 12.4614 15.7617 13 16.2071 13Z" fill="currentColor"></path>
-            <path d="M18.65 10.9543C17.5938 9.12846 15.6197 7.90002 13.3586 7.90002C9.98492 7.90002 7.25 10.6349 7.25 14.0086C7.25 17.3823 9.98492 20.1172 13.3586 20.1172C15.1678 20.1172 16.7933 19.3308 17.9118 18.081" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></path>
-        </svg>
+    const WIDGET_WRAPPER_HTML = `
+        <div class="WidgetHeader Hidden">
+            <div class="WidgetToolbar">
+                <button class="WidgetToolbarButton WidgetToolbarReloadButton">
+                    <svg width="20" height="20" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M16.2071 13H21V8.20711C21 7.76165 20.4614 7.53857 20.1464 7.85355L15.8536 12.1464C15.5386 12.4614 15.7617 13 16.2071 13Z" fill="currentColor"></path>
+                        <path d="M18.65 10.9543C17.5938 9.12846 15.6197 7.90002 13.3586 7.90002C9.98492 7.90002 7.25 10.6349 7.25 14.0086C7.25 17.3823 9.98492 20.1172 13.3586 20.1172C15.1678 20.1172 16.7933 19.3308 17.9118 18.081" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></path>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        <div class="WidgetRow">
+            <div class="Widget">
+                <webview class="WidgetWebview"></webview>
+            </div>
+        </div>
     `;
 
     class Widgets {
@@ -263,77 +274,33 @@
             widgetWrapper.ondrop = (e) => {this.#dropWidgetWrapper(e.target.parentElement)};
             widgetWrapper.ondragend = () => {this.#removeDragAndDropAreas()};
 
-            const header = this.#createWidgetHeader();
-            const widgetRow = this.#createWidgetRow(widgetInfo);
+            widgetWrapper.innerHTML = WIDGET_WRAPPER_HTML;
 
-            widgetWrapper.appendChild(header);
-            widgetWrapper.appendChild(widgetRow);
+            this.#configureWidget(widgetWrapper, widgetInfo);
+            this.#configureWebview(widgetWrapper, widgetInfo);
+            this.#configureWidgetToolbarReloadButton(widgetWrapper);
 
             return widgetWrapper;
         }
 
-        #createWidgetHeader() {
-            const header = document.createElement('div');
-            header.className = 'WidgetHeader Hidden';
-
-            const toolbar = this.#createWidgetToolbar();
-            header.appendChild(toolbar);
-
-            return header;
-        }
-
-        #createWidgetToolbar() {
-            const toolbar = document.createElement('div');
-            toolbar.className = 'WidgetToolbar';
-
-            const reloadButton = this.#createWidgetReloadButton();
-            toolbar.appendChild(reloadButton);
-
-            return toolbar;
-        }
-
-        #createWidgetReloadButton() {
-            const button = document.createElement('button');
-            button.className = 'WidgetWrapperHeaderButton';
-            button.innerHTML = WIDGET_RELOAD_BUTTON_ICON;
-
-            this.#createWidgetReloadButtonListener(button);
-            
-            return button;
-        }
-
-        #createWidgetRow(widgetInfo) {
-            const widgetRow = document.createElement('div');
-            widgetRow.className = 'WidgetRow';
-
-            const widget = this.#createWidget(widgetInfo);
-            widgetRow.appendChild(widget);
-
-            return widgetRow;
-        }
-
-        #createWidget(widgetInfo) {
-            const widget = document.createElement('div');
+        #configureWidget(widgetWrapper, widgetInfo) {
+            const widget = widgetWrapper.querySelector('.Widget');
             widget.id = widgetInfo.id;
-            widget.className = 'Widget';
             widget.style.width = widgetInfo.width;
             widget.style.height = widgetInfo.height;
-
-            const webview = this.#createWebview(widgetInfo);
-            widget.appendChild(webview);
-
-            return widget;
         }
 
-        #createWebview(widgetInfo) {
-            const webview = document.createElement('webview');
-            webview.className = "WidgetWebview";
+        #configureWebview(widgetWrapper, widgetInfo) {
+            const webview = widgetWrapper.querySelector('webview');
             webview.src = widgetInfo.url;
             webview.setZoom(widgetInfo.zoomFactor);
 
             this.#filterSelector(webview, widgetInfo.selector, widgetInfo.timeout);
+        }
 
-            return webview;
+        #configureWidgetToolbarReloadButton(widgetWrapper) {
+            const reloadButton = widgetWrapper.querySelector('.WidgetToolbarReloadButton');
+            this.#createWidgetReloadButtonListener(reloadButton);
         }
 
         #createDragAndDropAreas() {
