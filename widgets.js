@@ -137,7 +137,8 @@
             flex: 1;
         }
 
-        .WidgetInputRow input {
+        .WidgetInputRow input,
+        .WidgetInputRow textarea {
             width: 100%;
             flex: 2;
         }
@@ -186,33 +187,33 @@
                 <div class="WidgetSettings">
                     <div class="WidgetInputRow">
                         <label>ID:</label>
-                        <input type="text" class="WidgetId">
+                        <input type="text" class="WidgetId" draggable="true">
                     </div>
                     <div class="WidgetInputRow">
                         <label>URL:</label>
-                        <input type="text" class="WidgetUrl">
+                        <textarea type="text" class="WidgetUrl" draggable="true"></textarea>
                     </div>
                     <div class="WidgetInputRow">
                         <label>Zoom Factor:</label>
-                        <input type="number" class="WidgetZoomFactor" step="0.01" min="0" max="1">
+                        <input type="number" class="WidgetZoomFactor" step="0.01" min="0" max="1" draggable="true">
                     </div>
                     <div class="WidgetInputRow">
                         <label>Selector:</label>
-                        <input type="text" class="WidgetSelector">
+                        <textarea type="text" class="WidgetSelector" draggable="true"></textarea>
                     </div>
                     <div class="WidgetInputRow">
                         <label>Width (px):</label>
-                        <input type="number" class="WidgetWidth" step="1" min="100" max="10000">
+                        <input type="number" class="WidgetWidth" step="1" min="100" max="10000" draggable="true">
                     </div>
                     <div class="WidgetInputRow">
                         <label>Height (px):</label>
-                        <input type="number" class="WidgetHeight" step="1" min="100" max="10000">
+                        <input type="number" class="WidgetHeight" step="1" min="100" max="10000" draggable="true">
                     </div>
                     <div class="WidgetInputRow">
                         <label>Timeout (ms):</label>
-                        <input type="number" class="WidgetTimeout" step="100" min="0" max="10000">
+                        <input type="number" class="WidgetTimeout" step="100" min="0" max="10000" draggable="true">
                     </div>
-                    <input type="submit" value="Save">
+                    <input type="submit" class="WidgetSaveButton" value="Save">
                 </div>
             </div>
         </div>
@@ -339,6 +340,7 @@
 
             this.#configureWidget(widgetWrapper, widgetInfo);
             this.#configureWebview(widgetWrapper, widgetInfo);
+            this.#configureWidgetSettings(widgetWrapper, widgetInfo);
             this.#configureWidgetToolbarReloadButton(widgetWrapper);
             this.#configureWidgetToolbarSettingsButton(widgetWrapper);
 
@@ -358,6 +360,82 @@
             webview.setZoom(widgetInfo.zoomFactor);
 
             this.#filterSelector(webview, widgetInfo.selector, widgetInfo.timeout);
+        }
+
+        #configureWidgetSettings(widgetWrapper, widgetInfo) {
+            const widgetId = widgetWrapper.querySelector('.WidgetId');
+            const widgetUrl = widgetWrapper.querySelector('.WidgetUrl');
+            const widgetZoomFactor = widgetWrapper.querySelector('.WidgetZoomFactor');
+            const widgetSelector = widgetWrapper.querySelector('.WidgetSelector');
+            const widgetWidth = widgetWrapper.querySelector('.WidgetWidth');
+            const widgetHeight = widgetWrapper.querySelector('.WidgetHeight');
+            const widgetTimeout = widgetWrapper.querySelector('.WidgetTimeout');
+            const inputs = [widgetId, widgetUrl, widgetZoomFactor, widgetSelector, widgetWidth, widgetHeight, widgetTimeout];
+
+            widgetId.value = widgetInfo.id;
+            widgetUrl.innerText = widgetInfo.url;
+            widgetZoomFactor.value = widgetInfo.zoomFactor;
+            widgetSelector.innerText = widgetInfo.selector;
+            widgetWidth.value = widgetInfo.width.replace('px', '');
+            widgetHeight.value = widgetInfo.height.replace('px', '');
+            widgetTimeout.value = widgetInfo.timeout;
+
+            inputs.forEach(input => {
+                input.ondragstart = (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                };
+            });
+
+            const widget = widgetWrapper.querySelector('.Widget');
+            const webview = widgetWrapper.querySelector('webview');
+            
+            const saveButton = widgetWrapper.querySelector('.WidgetSaveButton');
+            saveButton.onclick = () => {
+                if (widgetId.value != widgetInfo.id) {
+                    const newId = widgetId.value;
+                    widgetInfo.id = newId;
+                    widget.id = newId;
+                }
+                if (widgetZoomFactor.value != widgetInfo.zoomFactor) {
+                    const newZoomFactor = Number(widgetZoomFactor.value);
+                    widgetInfo.zoomFactor = newZoomFactor;
+                    webview.setZoom(newZoomFactor);
+                }
+                if (widgetUrl.value != widgetInfo.url) {
+                    const newUrl = widgetUrl.value;
+                    widgetInfo.url = newUrl;
+                    webview.src = newUrl;
+                }
+                if (widgetWidth.value != widgetInfo.width.replace('px', '')) {
+                    const newWidth = widgetWidth.value + 'px';
+                    widgetInfo.width = newWidth;
+                    widget.style.width = newWidth;
+                }
+                if (widgetHeight.value != widgetInfo.height.replace('px', '')) {
+                    const newHeight = widgetHeight.value + 'px';
+                    widgetInfo.height = newHeight;
+                    widget.style.height = newHeight;
+                }
+
+                const isSelectorChanged = widgetSelector.value != widgetInfo.selector;
+                const isTimeoutChanged = widgetTimeout.value != widgetInfo.timeout;
+                if (isSelectorChanged || isTimeoutChanged) {
+                    if (isSelectorChanged) {
+                        const newSelector = widgetSelector.value;
+                        widgetInfo.selector = newSelector;
+                    }
+                    if (isTimeoutChanged) {
+                        const newTimeout = widgetTimeout.value;
+                        widgetInfo.timeout = newTimeout;
+                    }
+                    this.#filterSelector(webview, widgetInfo.selector, widgetInfo.timeout);
+                    if (isSelectorChanged) {
+                        this.#reloadWidget(widgetWrapper);
+                    }
+                }
+                this.#updateWidgets();
+            }
         }
 
         #configureWidgetToolbarReloadButton(widgetWrapper) {
@@ -457,11 +535,11 @@
                 body.style.minHeight = '0px';
                 window.scrollTo(0, 0);
             })()`;
-            webview.addEventListener('loadcommit', () => {
+            webview.onloadcommit = () => {
                 setTimeout(() => {
                     webview.executeScript({code: script})
                 }, timeout);
-            });
+            };
         }
 
         #reloadWidgets() {
@@ -598,10 +676,6 @@
 
         // utils
 
-        #compareSets(a, b) {
-            return a.size === b.size && [...a].every(value => b.has(value));
-        }
-
         #getMessage(message, type) {
             const messageName = (type ? type + '\x04' + message : message).replace(/[^a-z0-9]/g, function (i) {
                 return '_' + i.codePointAt(0) + '_';
@@ -655,32 +729,26 @@
         }
 
         addWidgetOrders(widgetOrders) {
-            if (!this.#db) return;
             return this.#add(this.#orderObjectStoreName, widgetOrders);
         }
 
         addWidgets(widgets) {
-            if (!this.#db) return;
             return this.#add(this.#widgetsObjectStoreName, widgets);
         }
 
         getWidgetOrders() {
-            if (!this.#db) return;
             return this.#getAll(this.#orderObjectStoreName);
         }
 
         getWidgets() {
-            if (!this.#db) return;
             return this.#getAll(this.#widgetsObjectStoreName);
         }
 
         clearWidgetOrders() {
-            if (!this.#db) return;
             return this.#clearAll(this.#orderObjectStoreName);
         }
 
         clearWidgets() {
-            if (!this.#db) return;
             return this.#clearAll(this.#widgetsObjectStoreName);
         }
 
