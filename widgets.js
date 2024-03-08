@@ -11,15 +11,6 @@
             width: '292px',
             height: '266px',
             timeout: 0
-        },
-        {
-            id: 'VivaldiReleasesWidget',
-            url: 'https://vivaldi.com/blog/',
-            selector: '.download-vivaldi-sidebar',
-            zoomFactor: 1,
-            width: '342px',
-            height: '378px',
-            timeout: 0
         }
     ];
 
