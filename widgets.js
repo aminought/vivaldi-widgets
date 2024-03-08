@@ -87,11 +87,26 @@
             position: relative;
             display: flex;
             flex-direction: row;
+            transition: width 0.2s ease-out, height 0.2s ease-out;
         }
 
         .Widget {
             position: relative;
             transition: width 0.2s ease-out, height 0.2s ease-out;
+        }
+
+        .WidgetResizer {
+            background: var(--colorBgAlpha);
+            position: absolute;
+            border-top-left-radius: 14px;
+            right: 0;
+            bottom: 0;
+            cursor: se-resize;
+            display: flex;
+        }
+
+        .WidgetResizer.Hidden {
+            display: none;
         }
 
         .WidgetWebview {
@@ -206,6 +221,11 @@
         <div class="WidgetRow">
             <div class="Widget">
                 <webview class="WidgetWebview"></webview>
+                <div class="WidgetResizer Hidden">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14px" height="14px" viewBox="0 0 24 24" fill="none">
+                        <path d="M21 15L15 21M21 8L8 21" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </div>
             </div>
             <div class="WidgetSidebar Hidden">
                 <div class="WidgetSettings">
@@ -325,6 +345,7 @@
         #createWidgetSidebarButtonListener(widgetWrapper, button) {
             button.addEventListener('click', () => {
                 this.#showWidgetSidebar(widgetWrapper);
+                this.#showWidgetResizer(widgetWrapper);
             });
         }
 
@@ -440,6 +461,7 @@
             widgetWrapper.ondragend = () => {this.#removeDragAndDropAreas()};
 
             this.#configureWidget(widgetWrapper, widgetInfo);
+            this.#configureWidgetResizer(widgetWrapper);
             this.#configureWebview(widgetWrapper, widgetInfo);
             this.#configureWidgetSettings(widgetWrapper, widgetInfo);
             this.#configureWidgetToolbarReloadButton(widgetWrapper);
@@ -453,6 +475,46 @@
             widget.id = widgetInfo.id;
             widget.style.width = widgetInfo.width;
             widget.style.height = widgetInfo.height;
+        }
+
+        #configureWidgetResizer(widgetWrapper) {
+            const widget = widgetWrapper.querySelector('.Widget');
+            const resizer = widgetWrapper.querySelector('.WidgetResizer');
+            const widgetWidth = widgetWrapper.querySelector('.WidgetWidth');
+            const widgetHeight = widgetWrapper.querySelector('.WidgetHeight');
+
+            resizer.addEventListener('mousedown', initDrag, false);
+
+            var startX, startY, startWidth, startHeight;
+
+            function initDrag(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                startX = e.clientX;
+                startY = e.clientY;
+                startWidth = parseInt(document.defaultView.getComputedStyle(widget).width, 10);
+                startHeight = parseInt(document.defaultView.getComputedStyle(widget).height, 10);
+                document.documentElement.addEventListener('mousemove', doDrag, false);
+                document.documentElement.addEventListener('mouseup', stopDrag, false);
+                const webviews = document.querySelector('.Widgets').querySelectorAll('webview');
+                webviews.forEach(webview => webview.style.pointerEvents = 'none');
+            }
+
+            function doDrag(e) {
+                const width = startWidth + e.clientX - startX;
+                const height = startHeight + e.clientY - startY;
+                widget.style.width = width + 'px';
+                widget.style.height = height + 'px';
+                widgetWidth.value = width;
+                widgetHeight.value = height;
+            }
+
+            function stopDrag(e) {
+                document.documentElement.removeEventListener('mousemove', doDrag, false);
+                document.documentElement.removeEventListener('mouseup', stopDrag, false);
+                const webviews = document.querySelector('.Widgets').querySelectorAll('webview');
+                webviews.forEach(webview => webview.style.pointerEvents = 'all');
+            }
         }
 
         #configureWebview(widgetWrapper, widgetInfo) {
@@ -557,7 +619,9 @@
 
                 const widgetWrapper = this.#createWidgetWrapper(widgetInfo);
                 const widgetSidebar = widgetWrapper.querySelector('.WidgetSidebar');
+                const widgetResizer = widgetWrapper.querySelector('.WidgetResizer');
                 widgetSidebar.classList.remove('Hidden');
+                widgetResizer.classList.remove('Hidden');
                 this.#widgets.push(widgetInfo);
                 this.#widgetsDivCache.insertBefore(widgetWrapper, newWidgetWrapper);
                 this.#widgetsDiv.insertBefore(widgetWrapper, newWidgetWrapper);
@@ -655,6 +719,15 @@
                 widgetSidebar.classList.remove('Hidden');
             } else {
                 widgetSidebar.classList.add('Hidden');
+            }
+        }
+
+        #showWidgetResizer(widgetWrapper) {
+            const widgetResizer = widgetWrapper.querySelector('.WidgetResizer');
+            if (widgetResizer.classList.contains('Hidden')) {
+                widgetResizer.classList.remove('Hidden');
+            } else {
+                widgetResizer.classList.add('Hidden');
             }
         }
 
