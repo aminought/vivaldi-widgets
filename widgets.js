@@ -160,9 +160,30 @@
             width: 100%;
             height: 100%;
         }
+
+        .NewWidgetWrapper {
+            position: relative;
+            padding: 5px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            border-radius: var(--radius);
+            background-color: var(--colorBgAlphaBlur);
+            backdrop-filter: var(--backgroundBlur);
+        }
+
+        .NewWidgetWrapper:hover {
+            background-color: var(--colorBgAlpha);
+        }
+
+        .NewWidgetButton {
+            background-color: transparent;
+            border: none;
+            display: flex;
+        }
     `;
 
-    const WIDGET_WRAPPER_HTML = `
+    const WIDGET_HEADER_HTML = `
         <div class="WidgetHeader Hidden">
             <div class="WidgetToolbar">
                 <button class="WidgetToolbarButton WidgetToolbarReloadButton">
@@ -179,6 +200,9 @@
                 </button>
             </div>
         </div>
+    `;
+
+    const WIDGET_ROW_HTML = `
         <div class="WidgetRow">
             <div class="Widget">
                 <webview class="WidgetWebview"></webview>
@@ -214,8 +238,27 @@
                         <input type="number" class="WidgetTimeout" step="100" min="0" max="10000" draggable="true">
                     </div>
                     <input type="submit" class="WidgetSaveButton" value="Save">
+                    <input type="button" class="WidgetDeleteButton danger" value="Delete">
                 </div>
             </div>
+        </div>
+    `;
+
+    const WIDGET_WRAPPER_HTML = `
+        <div class="WidgetWrapper" draggable="true">
+            ${WIDGET_HEADER_HTML}
+            ${WIDGET_ROW_HTML}
+        </div>
+    `;
+
+    const NEW_WIDGET_WRAPPER_HTML = `
+        <div class="NewWidgetWrapper">
+            <button class="NewWidgetButton">
+                <svg class="add-speeddial-large-plus" width="128" height="128" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+                    <path fill="none" vector-effect="non-scaling-stroke" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M24 10V38M10 24H38"></path>
+                </svg>
+            </button>
+            <span class="NewWidgetTitle">Add new widget</span>
         </div>
     `;
 
@@ -285,6 +328,65 @@
             });
         }
 
+        #createWidgetSaveButtonListener(saveButton, widgetWrapper, widgetInfo) {
+            const widget = widgetWrapper.querySelector('.Widget');
+            const webview = widgetWrapper.querySelector('webview');
+
+            const widgetId = widgetWrapper.querySelector('.WidgetId');
+            const widgetUrl = widgetWrapper.querySelector('.WidgetUrl');
+            const widgetZoomFactor = widgetWrapper.querySelector('.WidgetZoomFactor');
+            const widgetSelector = widgetWrapper.querySelector('.WidgetSelector');
+            const widgetWidth = widgetWrapper.querySelector('.WidgetWidth');
+            const widgetHeight = widgetWrapper.querySelector('.WidgetHeight');
+            const widgetTimeout = widgetWrapper.querySelector('.WidgetTimeout');
+
+            saveButton.onclick = () => {
+                if (widgetId.value != widgetInfo.id) {
+                    const newId = widgetId.value;
+                    widgetInfo.id = newId;
+                    widget.id = newId;
+                }
+                if (widgetZoomFactor.value != widgetInfo.zoomFactor) {
+                    const newZoomFactor = Number(widgetZoomFactor.value);
+                    widgetInfo.zoomFactor = newZoomFactor;
+                    webview.setZoom(newZoomFactor);
+                }
+                if (widgetUrl.value != widgetInfo.url) {
+                    const newUrl = widgetUrl.value;
+                    widgetInfo.url = newUrl;
+                    webview.src = newUrl;
+                }
+                if (widgetWidth.value != widgetInfo.width.replace('px', '')) {
+                    const newWidth = widgetWidth.value + 'px';
+                    widgetInfo.width = newWidth;
+                    widget.style.width = newWidth;
+                }
+                if (widgetHeight.value != widgetInfo.height.replace('px', '')) {
+                    const newHeight = widgetHeight.value + 'px';
+                    widgetInfo.height = newHeight;
+                    widget.style.height = newHeight;
+                }
+
+                const isSelectorChanged = widgetSelector.value != widgetInfo.selector;
+                const isTimeoutChanged = widgetTimeout.value != widgetInfo.timeout;
+                if (isSelectorChanged || isTimeoutChanged) {
+                    if (isSelectorChanged) {
+                        const newSelector = widgetSelector.value;
+                        widgetInfo.selector = newSelector;
+                    }
+                    if (isTimeoutChanged) {
+                        const newTimeout = widgetTimeout.value;
+                        widgetInfo.timeout = newTimeout;
+                    }
+                    this.#filterSelector(webview, widgetInfo.selector, widgetInfo.timeout);
+                    if (isSelectorChanged) {
+                        this.#reloadWidget(widgetWrapper);
+                    }
+                }
+                this.#updateWidgets();
+            };
+        }
+
         // builders
 
         #createStyle() {
@@ -322,12 +424,13 @@
                 const widgetWrapper = this.#createWidgetWrapper(widgetInfo);
                 this.#widgetsDivCache.appendChild(widgetWrapper);
             });
+
+            const newWidgetWrapper = this.#createNewWidgetWrapper();
+            this.#widgetsDivCache.appendChild(newWidgetWrapper);
         }
 
         #createWidgetWrapper(widgetInfo) {
-            const widgetWrapper = document.createElement('div');
-            widgetWrapper.className = 'WidgetWrapper';
-            widgetWrapper.draggable = true;
+            const widgetWrapper = this.#createElement(WIDGET_WRAPPER_HTML);
 
             widgetWrapper.onmouseenter = (e) => {this.#showWidgetHeader(e.target)};
             widgetWrapper.onmouseleave = (e) => {this.#hideWidgetHeader(e.target)};
@@ -335,8 +438,6 @@
             widgetWrapper.ondragover = (e) => e.preventDefault();
             widgetWrapper.ondrop = (e) => {this.#dropWidgetWrapper(e.target.parentElement)};
             widgetWrapper.ondragend = () => {this.#removeDragAndDropAreas()};
-
-            widgetWrapper.innerHTML = WIDGET_WRAPPER_HTML;
 
             this.#configureWidget(widgetWrapper, widgetInfo);
             this.#configureWebview(widgetWrapper, widgetInfo);
@@ -386,54 +487,15 @@
                     e.stopPropagation();
                 };
             });
-
-            const widget = widgetWrapper.querySelector('.Widget');
-            const webview = widgetWrapper.querySelector('webview');
             
             const saveButton = widgetWrapper.querySelector('.WidgetSaveButton');
-            saveButton.onclick = () => {
-                if (widgetId.value != widgetInfo.id) {
-                    const newId = widgetId.value;
-                    widgetInfo.id = newId;
-                    widget.id = newId;
-                }
-                if (widgetZoomFactor.value != widgetInfo.zoomFactor) {
-                    const newZoomFactor = Number(widgetZoomFactor.value);
-                    widgetInfo.zoomFactor = newZoomFactor;
-                    webview.setZoom(newZoomFactor);
-                }
-                if (widgetUrl.value != widgetInfo.url) {
-                    const newUrl = widgetUrl.value;
-                    widgetInfo.url = newUrl;
-                    webview.src = newUrl;
-                }
-                if (widgetWidth.value != widgetInfo.width.replace('px', '')) {
-                    const newWidth = widgetWidth.value + 'px';
-                    widgetInfo.width = newWidth;
-                    widget.style.width = newWidth;
-                }
-                if (widgetHeight.value != widgetInfo.height.replace('px', '')) {
-                    const newHeight = widgetHeight.value + 'px';
-                    widgetInfo.height = newHeight;
-                    widget.style.height = newHeight;
-                }
+            this.#createWidgetSaveButtonListener(saveButton, widgetWrapper, widgetInfo);
 
-                const isSelectorChanged = widgetSelector.value != widgetInfo.selector;
-                const isTimeoutChanged = widgetTimeout.value != widgetInfo.timeout;
-                if (isSelectorChanged || isTimeoutChanged) {
-                    if (isSelectorChanged) {
-                        const newSelector = widgetSelector.value;
-                        widgetInfo.selector = newSelector;
-                    }
-                    if (isTimeoutChanged) {
-                        const newTimeout = widgetTimeout.value;
-                        widgetInfo.timeout = newTimeout;
-                    }
-                    this.#filterSelector(webview, widgetInfo.selector, widgetInfo.timeout);
-                    if (isSelectorChanged) {
-                        this.#reloadWidget(widgetWrapper);
-                    }
-                }
+            const deleteButton = widgetWrapper.querySelector('.WidgetDeleteButton');
+            deleteButton.onclick = () => {
+                const widget = widgetWrapper.querySelector('.Widget');
+                this.#widgets = this.#widgets.filter(widgetInfo => widgetInfo.id !== widget.id);
+                widgetWrapper.remove();
                 this.#updateWidgets();
             }
         }
@@ -474,6 +536,37 @@
             return dropArea;
         }
 
+        #createNewWidgetWrapper() {
+            const newWidgetWrapper = this.#createElement(NEW_WIDGET_WRAPPER_HTML);
+            const newWidgetButton = newWidgetWrapper.querySelector('.NewWidgetButton');
+
+            const widgetInfoTemplate = {
+                id: 'VivaldiReleasesWidget',
+                url: 'https://vivaldi.com/blog/',
+                selector: '.download-vivaldi-sidebar',
+                zoomFactor: 1,
+                width: '342px',
+                height: '378px',
+                timeout: 0,
+                order: -1
+            };
+
+            newWidgetButton.onclick = () => {
+                const widgetInfo = structuredClone(widgetInfoTemplate);
+                widgetInfo.id += '-' + this.#uuidv4();
+
+                const widgetWrapper = this.#createWidgetWrapper(widgetInfo);
+                const widgetSidebar = widgetWrapper.querySelector('.WidgetSidebar');
+                widgetSidebar.classList.remove('Hidden');
+                this.#widgets.push(widgetInfo);
+                this.#widgetsDivCache.insertBefore(widgetWrapper, newWidgetWrapper);
+                this.#widgetsDiv.insertBefore(widgetWrapper, newWidgetWrapper);
+                this.#updateWidgets();
+            };
+
+            return newWidgetWrapper;
+        }
+
         // actions
 
         #addStyle() {
@@ -500,7 +593,7 @@
         }
 
         #fixPointerEvents() {
-            for (const widget of this.#widgetsDiv.children) {
+            for (const widget of this.#widgetsDiv.querySelectorAll('.WidgetWrapper')) {
                 const webview = widget.querySelector('webview');
                 webview.style.pointerEvents = 'all';
             }
@@ -546,7 +639,7 @@
             if (!this.#widgetsDiv) {
                 return;
             }
-            for (const widgetWrapper of this.#widgetsDiv.children) {
+            for (const widgetWrapper of this.#widgetsDiv.querySelectorAll('.WidgetWrapper')) {
                 this.#reloadWidget(widgetWrapper);
             }
         }
@@ -575,7 +668,7 @@
         #updateWidgets() {
             const widgets = [];
             var order = 0;
-            for (const widgetWrapper of this.#widgetsDiv.children) {
+            for (const widgetWrapper of this.#widgetsDiv.querySelectorAll('.WidgetWrapper')) {
                 const widgetDiv = widgetWrapper.querySelector('.Widget');
                 const widget = this.#widgets.find(widget => widget.id == widgetDiv.id);
                 widget.order = order;
@@ -615,16 +708,6 @@
             this.#removeDragAndDropAreas();
             this.#updateWidgets();
             return false;
-        }
-
-        // utils
-
-        #findParentByClass(element, className) {
-            if (element.parentElement.classList.contains(className)) {
-                return element.parentElement;
-            } else {
-                return this.#findParentByClass(element.parentElement, className);
-            }
         }
 
         // getters
@@ -675,6 +758,18 @@
         }
 
         // utils
+
+        #createElement(html) {
+            const template = document.createElement('div');
+            template.innerHTML = html.trim();
+            return template.firstElementChild;
+        }
+
+        #uuidv4() {
+            return "10000000-1000-4000-8000-100000000000".replace(/[018]/g, c =>
+                (c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16)
+            );
+        }
 
         #getMessage(message, type) {
             const messageName = (type ? type + '\x04' + message : message).replace(/[^a-z0-9]/g, function (i) {
