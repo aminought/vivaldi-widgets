@@ -441,6 +441,12 @@
 
             const newWidgetWrapper = this.#createNewWidgetWrapper();
             this.#widgetsDivCache.appendChild(newWidgetWrapper);
+
+            this.#widgetsDivCache.addEventListener('click', (e) => {
+                if (e.target !== this.#widgetsDiv) return;
+                const elementsToHide = document.querySelectorAll('.WidgetSidebar, .WidgetResizer');
+                elementsToHide.forEach(e => e.classList.add('Hidden'));
+            });
         }
 
         #createWidgetWrapper(widgetInfo) {
