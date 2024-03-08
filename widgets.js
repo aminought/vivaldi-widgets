@@ -110,7 +110,7 @@
             position: relative;
             display: flex;
             flex-direction: column;
-            width: 300px;
+            width: 310px;
             transition: width 0.2s ease-out;
             padding-left: 10px;
         }
@@ -147,6 +147,16 @@
         .WidgetInputRow textarea {
             width: 100%;
             flex: 2;
+        }
+
+        .WidgetActionButtons {
+            display: flex;
+            overflow: hidden;
+            gap: 5px;
+        }
+
+        .WidgetActionButton {
+            flex: 1;
         }
 
         .WidgetWrapperDragArea {
@@ -248,8 +258,12 @@
                         <label>Timeout (ms):</label>
                         <input type="number" class="WidgetTimeout" step="100" min="0" max="10000" draggable="true">
                     </div>
-                    <input type="submit" class="WidgetSaveButton" value="Save">
-                    <input type="button" class="WidgetDeleteButton danger" value="Delete">
+                    <div class="WidgetActionButtons">
+                        <input type="button" class="WidgetActionButton WidgetCopyButton" value="Copy">
+                        <input type="button" class="WidgetActionButton WidgetPasteButton" value="Paste">
+                        <input type="submit" class="WidgetActionButton WidgetSaveButton" value="Save">
+                        <input type="button" class="WidgetActionButton WidgetDeleteButton danger" value="Delete">
+                    </div>
                 </div>
             </div>
         </div>
@@ -336,7 +350,7 @@
         }
 
         #createWidgetSidebarButtonListener(widgetWrapper, button) {
-            button.addEventListener('click', () => {
+            button.addEventListener('click', (e) => {
                 this.#showWidgetSidebar(widgetWrapper);
                 this.#showWidgetResizer(widgetWrapper);
             });
@@ -365,11 +379,6 @@
                     widgetInfo.zoomFactor = newZoomFactor;
                     webview.setZoom(newZoomFactor);
                 }
-                if (widgetUrl.value != widgetInfo.url) {
-                    const newUrl = widgetUrl.value;
-                    widgetInfo.url = newUrl;
-                    webview.src = newUrl;
-                }
                 if (widgetWidth.value != widgetInfo.width.replace('px', '')) {
                     const newWidth = widgetWidth.value + 'px';
                     widgetInfo.width = newWidth;
@@ -381,21 +390,27 @@
                     widget.style.height = newHeight;
                 }
 
+
+                const isUrlChanged = widgetUrl.value != widgetInfo.url;
                 const isSelectorChanged = widgetSelector.value != widgetInfo.selector;
                 const isTimeoutChanged = widgetTimeout.value != widgetInfo.timeout;
+                if (isSelectorChanged) {
+                    const newSelector = widgetSelector.value;
+                    widgetInfo.selector = newSelector;
+                }
+                if (isTimeoutChanged) {
+                    const newTimeout = widgetTimeout.value;
+                    widgetInfo.timeout = newTimeout;
+                }
                 if (isSelectorChanged || isTimeoutChanged) {
-                    if (isSelectorChanged) {
-                        const newSelector = widgetSelector.value;
-                        widgetInfo.selector = newSelector;
-                    }
-                    if (isTimeoutChanged) {
-                        const newTimeout = widgetTimeout.value;
-                        widgetInfo.timeout = newTimeout;
-                    }
                     this.#filterSelector(webview, widgetInfo.selector, widgetInfo.timeout);
-                    if (isSelectorChanged) {
-                        this.#reloadWidget(widgetWrapper);
-                    }
+                }
+                if (isUrlChanged) {
+                    const newUrl = widgetUrl.value;
+                    widgetInfo.url = newUrl;
+                    webview.src = newUrl;
+                } else if (isSelectorChanged) {
+                    this.#reloadWidget(widgetWrapper);
                 }
                 this.#updateWidgets();
             };
@@ -534,19 +549,46 @@
             const widgetTimeout = widgetWrapper.querySelector('.WidgetTimeout');
             const inputs = [widgetId, widgetUrl, widgetZoomFactor, widgetSelector, widgetWidth, widgetHeight, widgetTimeout];
 
-            widgetId.value = widgetInfo.id;
-            widgetUrl.innerText = widgetInfo.url;
-            widgetZoomFactor.value = widgetInfo.zoomFactor;
-            widgetSelector.innerText = widgetInfo.selector;
-            widgetWidth.value = widgetInfo.width.replace('px', '');
-            widgetHeight.value = widgetInfo.height.replace('px', '');
-            widgetTimeout.value = widgetInfo.timeout;
+            function fillInputs(widgetInfo) {
+                widgetId.value = widgetInfo.id;
+                widgetUrl.innerText = widgetInfo.url;
+                widgetZoomFactor.value = widgetInfo.zoomFactor;
+                widgetSelector.innerText = widgetInfo.selector;
+                widgetWidth.value = widgetInfo.width.replace('px', '');
+                widgetHeight.value = widgetInfo.height.replace('px', '');
+                widgetTimeout.value = widgetInfo.timeout;
+            }
+
+            fillInputs(widgetInfo);
 
             inputs.forEach(input => {
                 input.ondragstart = (e) => {
                     e.preventDefault();
                     e.stopPropagation();
                 };
+            });
+
+            const copyButton = widgetWrapper.querySelector('.WidgetCopyButton');
+            copyButton.addEventListener('click', () => {
+                const widgetInfo = {
+                    id: widgetId.value,
+                    url: widgetUrl.value,
+                    zoomFactor: widgetZoomFactor.value,
+                    selector: widgetSelector.value,
+                    width: widgetWidth.value + 'px',
+                    height: widgetHeight.value + 'px',
+                    timeout: widgetTimeout.value
+                };
+                navigator.clipboard.writeText(JSON.stringify(widgetInfo, null, 4));
+            });
+
+            const pasteButton = widgetWrapper.querySelector('.WidgetPasteButton');
+            pasteButton.addEventListener('click', async () => {
+                const re = /(\w+): /g;
+                var text = await navigator.clipboard.readText();
+                text = text.trim().replaceAll(`'`, `"`).replace(re, `"$1": `);
+                const widgetInfo = JSON.parse(text);
+                fillInputs(widgetInfo);
             });
             
             const saveButton = widgetWrapper.querySelector('.WidgetSaveButton');
