@@ -283,12 +283,14 @@
         constructor() {
             this.#addStyle();
             this.#db.connect().then(() => {
-                this.#createWidgets().then(() => {
-                    this.#addWidgets();
-                    this.#createSdWrapperMutationObserver();
-                    this.#createTabActivationListener();
-                    this.#createReloadButtonListener();
-                });
+                setTimeout(() => {
+                    this.#createWidgets().then(() => {
+                        this.#addWidgets();
+                        this.#createSdWrapperMutationObserver();
+                        this.#createTabActivationListener();
+                        this.#createReloadButtonListener();
+                    });
+                }, 1000);
             });
         }
 
