@@ -369,41 +369,44 @@
             const widgetTimeout = widgetWrapper.querySelector('.WidgetTimeout');
 
             saveButton.onclick = () => {
-                if (widgetId.value != widgetInfo.id) {
+                const isIdChanged = widgetId.value != widgetInfo.id;
+                const isWidthChanged = widgetWidth.value != widgetInfo.width.replace('px', '');
+                const isHeightChanged = widgetHeight.value != widgetInfo.height.replace('px', '');
+                const isUrlChanged = widgetUrl.value != widgetInfo.url;
+                const isZoomFactorChanged = widgetZoomFactor.value != widgetInfo.zoomFactor;
+                const isSelectorChanged = widgetSelector.value != widgetInfo.selector;
+                const isTimeoutChanged = widgetTimeout.value != widgetInfo.timeout;
+
+                if (isIdChanged) {
                     const newId = widgetId.value;
                     widgetInfo.id = newId;
                     widget.id = newId;
                 }
-                if (widgetZoomFactor.value != widgetInfo.zoomFactor) {
-                    const newZoomFactor = Number(widgetZoomFactor.value);
-                    widgetInfo.zoomFactor = newZoomFactor;
-                    webview.setZoom(newZoomFactor);
-                }
-                if (widgetWidth.value != widgetInfo.width.replace('px', '')) {
+                if (isWidthChanged) {
                     const newWidth = widgetWidth.value + 'px';
                     widgetInfo.width = newWidth;
                     widget.style.width = newWidth;
                 }
-                if (widgetHeight.value != widgetInfo.height.replace('px', '')) {
+                if (isHeightChanged) {
                     const newHeight = widgetHeight.value + 'px';
                     widgetInfo.height = newHeight;
                     widget.style.height = newHeight;
                 }
-
-
-                const isUrlChanged = widgetUrl.value != widgetInfo.url;
-                const isSelectorChanged = widgetSelector.value != widgetInfo.selector;
-                const isTimeoutChanged = widgetTimeout.value != widgetInfo.timeout;
                 if (isSelectorChanged) {
                     const newSelector = widgetSelector.value;
                     widgetInfo.selector = newSelector;
+                }
+                if (isZoomFactorChanged) {
+                    const newZoomFactor = Number(widgetZoomFactor.value);
+                    widgetInfo.zoomFactor = newZoomFactor;
+                    webview.setZoom(widgetInfo.zoomFactor);
                 }
                 if (isTimeoutChanged) {
                     const newTimeout = widgetTimeout.value;
                     widgetInfo.timeout = newTimeout;
                 }
-                if (isSelectorChanged || isTimeoutChanged) {
-                    this.#filterSelector(webview, widgetInfo.selector, widgetInfo.timeout);
+                if (isSelectorChanged || isZoomFactorChanged || isUrlChanged || isTimeoutChanged) {
+                    this.#updateWebviewOnLoadCommit(webview, widgetInfo.selector, widgetInfo.zoomFactor, widgetInfo.timeout);
                 }
                 if (isUrlChanged) {
                     const newUrl = widgetUrl.value;
@@ -534,9 +537,7 @@
         #configureWebview(widgetWrapper, widgetInfo) {
             const webview = widgetWrapper.querySelector('webview');
             webview.src = widgetInfo.url;
-            webview.setZoom(widgetInfo.zoomFactor);
-
-            this.#filterSelector(webview, widgetInfo.selector, widgetInfo.timeout);
+            this.#updateWebviewOnLoadCommit(webview, widgetInfo.selector, widgetInfo.zoomFactor, widgetInfo.timeout);
         }
 
         #configureWidgetSettings(widgetWrapper, widgetInfo) {
@@ -704,7 +705,16 @@
             }
         }
 
-        #filterSelector(webview, selector, timeout) {
+        #updateWebviewOnLoadCommit(webview, selector, zoomFactor, timeout) {
+            webview.onloadcommit = () => {
+                setTimeout(() => {
+                    this.#filterSelector(webview, selector, timeout);
+                    webview.setZoom(zoomFactor);
+                }, timeout);
+            };
+        }
+
+        #filterSelector(webview, selector) {
             const script = `(() => {
                 var toDelete = [];
                 var e = document.querySelector('${selector}');
@@ -733,11 +743,7 @@
                 body.style.minHeight = '0px';
                 window.scrollTo(0, 0);
             })()`;
-            webview.onloadcommit = () => {
-                setTimeout(() => {
-                    webview.executeScript({code: script})
-                }, timeout);
-            };
+            webview.executeScript({code: script})
         }
 
         #reloadWidgets() {
