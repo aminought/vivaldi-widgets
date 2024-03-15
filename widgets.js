@@ -462,7 +462,7 @@
 
             this.#widgetsDivCache.addEventListener('click', (e) => {
                 if (e.target !== this.#widgetsDiv) return;
-                const elementsToHide = document.querySelectorAll('.WidgetSidebar, .WidgetResizer');
+                const elementsToHide = document.querySelectorAll('.WidgetSidebar, .WidgetHeader, .WidgetResizer');
                 elementsToHide.forEach(e => e.classList.add('Hidden'));
             });
         }
