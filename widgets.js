@@ -1030,9 +1030,10 @@
         }
     }
 
-    function initMod() {
-        window.widgets = new Widgets();
-    }
-
-    setTimeout(initMod, 500);
+    var interval = setInterval(() => {
+        if (document.querySelector('#browser')) {
+            window.widgets = new Widgets();
+            clearInterval(interval);
+        }
+    }, 100);
 })();
